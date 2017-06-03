@@ -399,15 +399,15 @@ local function FinishMoveThink(unit)
 		elseif target == 3 then -- self
 			targetUnit = unit
 		elseif target == 4 then -- tree
-			targetUnit = unit:GetNearbyTrees(1600)[0]
+			targetUnit = unit:GetNearbyTrees(1600)[1]
 		elseif target == 5 then -- jungle creeps
-			targetUnit = unit:GetNearbyNeutralCreeps(1600)[0]
+			targetUnit = unit:GetNearbyNeutralCreeps(1600)[1]
 		elseif target == 6 then
-			targetUnit = unit:GetNearbyLaneCreeps(1600)[0]	
+			targetUnit = unit:GetNearbyLaneCreeps(1600)[1]	
 		elseif target == 7 then -- enemy hero
-			targetUnit = unit:GetNearbyHeroes(1600, true)[0]
+			targetUnit = unit:GetNearbyHeroes(1600, true)[1]
 		elseif target == 8 then -- friendly hero
-			targetUnit = unit:GetNearbyHeroes(1600, false)[0]
+			targetUnit = unit:GetNearbyHeroes(1600, false)[1]
 		end
 
 		if targetUnit then
