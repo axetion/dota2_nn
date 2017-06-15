@@ -3,7 +3,6 @@ require "nn"
 require "paths"
 require "torch"
 
-local pegasus = require "pegasus"
 local threads = require "threads"
 local uuid = require "uuid"
 
@@ -22,7 +21,7 @@ local function LoadNNs(hero)
 
 	if not paths.dirp(path) then
 		return false
-	end	
+	end
 
 	for net in paths.iterfiles(path) do
 		local parts = net:gmatch("[^_]+")
@@ -47,8 +46,8 @@ local function AddMove(params, response)
 
 	if nns[hero] == nil then
 		if not LoadNNs(hero) then
-			response:statusCode(404)
-			response:write(hero .. " not found")
+			response.status(400)
+			response.send("")
 			return
 		end
 	end
@@ -73,8 +72,8 @@ local function AddMove(params, response)
 		nn_queries[id].done = true
 	end)
 
-	response:statusCode(201)
-	response:write(id)
+	response.setStatus(201)
+	response.send(id)
 end
 
 local function GetMoveResult(params, response)
@@ -85,48 +84,55 @@ local function GetMoveResult(params, response)
 	local query = nn_queries[params.id]
 
 	if query == nil then
-		response:writeDefaultErrorMessage(404)
+		response.status(404)
+		response.send("")
 	elseif not query.done then
-		response:writeDefaultErrorMessage(202)
+		response.status(202)
+		response.send("")
 	else
 		if query.err_msg ~= nil or query.result == nil then
-			response:statusCode(500)
-			response:write(query.err_msg)
+			response.status(500)
+			response.send(query.err_msg)
 			print(query.err_msg)
 		else
-			response:statusCode(200)
-			response:write(json.encode(torch.totable(query.result)))
+			response.status(200)
+			response.send(json.encode(torch.totable(query.result)))
 		end
 
 		nn_queries[params.id] = nil
 	end
 end
 
-local function ServerEntry(request, response)
+local app = require "waffle"
+
+app.post("^/move$", function(request, response)
 	if request.ip ~= "127.0.0.1" then
-		response:writeDefaultErrorMessage(403)
-	elseif request:path() == "/move" then
-		local ok, msg = pcall(AddMove, request:params(), response)
-
-		if not ok then
-			response:statusCode(500)
-			response:write(msg)
-		end
-	elseif request:path() == "/move_result" then
-		local ok, msg = pcall(GetMoveResult, request:params(), response) 
-
-		if not ok then
-			response:statusCode(500)
-			response:write(msg)
-		end
-	else
-		response:writeDefaultErrorMessage(410)
+		response.status(403)
+		response.send("")
+		return
 	end
 
-	response:close()
-end
+	local ok, msg = pcall(AddMove, request.url.args, response)
 
+	if not ok then
+		response.status(500)
+		response.send(msg)
+	end
+end)
 
-local server = pegasus:new { port = 1414 }
+app.post("^/move_result$", function(request, response)
+	if request.ip ~= "127.0.0.1" then
+		response.status(403)
+		response.send("")
+		return
+	end
 
-server:start(ServerEntry)
+	local ok, msg = pcall(GetMoveResult, request.url.args, response)
+
+	if not ok then
+		response.status(500)
+		response.send(msg)
+	end
+end)
+
+app.listen { port = 1414 }
