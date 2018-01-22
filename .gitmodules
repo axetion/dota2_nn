@@ -1,0 +1,12 @@
+[submodule "trainer/src/github.com/davecgh/go-spew"]
+	path = trainer/src/github.com/davecgh/go-spew
+	url = https://github.com/davecgh/go-spew.git
+[submodule "trainer/src/github.com/dotabuff/manta"]
+	path = trainer/src/github.com/dotabuff/manta
+	url = https://github.com/dotabuff/manta.git
+[submodule "trainer/src/github.com/golang/protobuf"]
+	path = trainer/src/github.com/golang/protobuf
+	url = https://github.com/golang/protobuf.git
+[submodule "trainer/src/github.com/golang/snappy"]
+	path = trainer/src/github.com/golang/snappy
+	url = https://github.com/golang/snappy.git

@@ -1,3 +1,7 @@
 .vscode/*
 bots/ability_data.lua
 server/data/*
+trainer/corpus_builder
+trainer/data/*
+trainer/bin/*
+trainer/pkg/*

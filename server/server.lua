@@ -3,18 +3,7 @@ require "nn"
 require "paths"
 require "torch"
 
-local threads = require "threads"
-local uuid = require "uuid"
-
-local nns = {}
-local nn_queries = {}
-local pool = threads.Threads(8, function()
-	require "torch"
-	require "nn"
-end)
-
-uuid.seed()
-pool:specific(false)
+local models = {}
 
 local function LoadNNs(hero)
 	local path = "data/" .. hero .. "/nets/"
@@ -39,8 +28,10 @@ local function LoadNNs(hero)
 	return true
 end
 
-local function AddMove(params, response)
+local function DoQuery(params, response)
 	local hero = params.hero
+	local type = params.type
+
 	local team = tonumber(params.team)
 	local input = torch.Tensor(json.decode(params.tensor))
 
@@ -52,82 +43,33 @@ local function AddMove(params, response)
 		end
 	end
 
-	local net = nns[hero][team].move
+	local net = nns[hero][team][type]
 
-	local id = uuid.new()
+	ok, result = pcall(net.forward, net, input)
 
-	nn_queries[id] = {
-		done = false,
-		result = nil,
-		err_msg = nil,
-	}
+	if ok then
+		result = json.encode(torch.totable(result))
 
-	pool:addjob(function() return pcall(net.forward, net, input) end, function(ok, result)
-		if not ok then
-			nn_queries[id].err_msg = result
-		else
-			nn_queries[id].result = result
-		end
-
-		nn_queries[id].done = true
-	end)
-
-	response.setStatus(201)
-	response.send(id)
-end
-
-local function GetMoveResult(params, response)
-	pool:synchronize()
-
-	local id = params.id
-
-	local query = nn_queries[params.id]
-
-	if query == nil then
-		response.status(404)
-		response.send("")
-	elseif not query.done then
-		response.status(202)
-		response.send("")
+		response.setStatus(200)
+		response.send(result)
 	else
-		if query.err_msg ~= nil or query.result == nil then
-			response.status(500)
-			response.send(query.err_msg)
-			print(query.err_msg)
-		else
-			response.status(200)
-			response.send(json.encode(torch.totable(query.result)))
-		end
-
-		nn_queries[params.id] = nil
+		response.status(500)
+		response.send(result)
+		print(result)
 	end
 end
+
 
 local app = require "waffle"
 
-app.post("^/move$", function(request, response)
+app.post("^/query$", function(request, response)
 	if request.ip ~= "127.0.0.1" then
 		response.status(403)
 		response.send("")
 		return
 	end
 
-	local ok, msg = pcall(AddMove, request.url.args, response)
-
-	if not ok then
-		response.status(500)
-		response.send(msg)
-	end
-end)
-
-app.post("^/move_result$", function(request, response)
-	if request.ip ~= "127.0.0.1" then
-		response.status(403)
-		response.send("")
-		return
-	end
-
-	local ok, msg = pcall(GetMoveResult, request.url.args, response)
+	local ok, msg = pcall(DoQuery, request.url.args, response)
 
 	if not ok then
 		response.status(500)
